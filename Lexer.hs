@@ -1,11 +1,11 @@
-module Lexer (Token, lexer) where
+module Lexer (Token (..), lexer) where
 
 import Data.Char (isAlphaNum, isDigit, isLetter, isSpace)
 
 data Token
-  = Number Int
+  = Number String
   | Ident String
-  | String String
+  | StringToken String
   | Semicolon
   | LParen
   | RParen
@@ -22,6 +22,9 @@ data Token
   | Else
   | While
   | Var
+  | Nil
+  | BoolTrue
+  | BoolFalse
   | Illegal
   | Comma
   | LessThan
@@ -47,9 +50,9 @@ lexer all@(h : t)
   | h == '<' = LessThan : lexer t
   | h == '>' = GreaterThan : lexer t
   | h == '=' = if h == '=' && head t == '=' then Equals : lexer (tail t) else Assign : lexer t
-  | h == '"' = let (chars, t') = span (/= '"') t in String chars : lexer (tail t')
+  | h == '"' = let (chars, t') = span (/= '"') t in StringToken chars : lexer (tail t')
   | isSpace h = lexer t
-  | isDigit h = let (digits, t') = span isDigit t in Number (read (h : digits)) : lexer t'
+  | isDigit h = let (digits, t') = span isDigit t in Number (h : digits) : lexer t'
   | isLetter h = do
       let (ident, t') = span isAlphaNum all
        in case ident of
@@ -57,5 +60,8 @@ lexer all@(h : t)
             "else" -> Else : lexer t'
             "while" -> While : lexer t'
             "var" -> Var : lexer t'
+            "nil" -> Nil : lexer t'
+            "true" -> BoolTrue : lexer t'
+            "false" -> BoolFalse : lexer t'
             _ -> Ident ident : lexer t'
   | otherwise = Illegal : lexer t
