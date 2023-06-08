@@ -1,6 +1,5 @@
 module Parser where
 
-import Data.Maybe (fromMaybe)
 import Lexer (Token (..))
 
 -- Todo: clashes schöner fixen, implement bang
