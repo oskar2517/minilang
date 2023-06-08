@@ -1,7 +1,7 @@
 module Main where
 
 import Lexer (lexer)
-import Parser (parseFactor, parseNumeric)
+import Parser (parseExpression, parseNumeric)
 
 main :: IO ()
 main = print "hi"

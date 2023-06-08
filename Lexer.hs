@@ -18,6 +18,8 @@ data Token
   | Percent
   | Assign
   | Equals
+  | NotEquals
+  | Bang
   | If
   | Else
   | While
@@ -49,7 +51,8 @@ lexer all@(h : t)
   | h == ',' = Comma : lexer t
   | h == '<' = LessThan : lexer t
   | h == '>' = GreaterThan : lexer t
-  | h == '=' = if h == '=' && head t == '=' then Equals : lexer (tail t) else Assign : lexer t
+  | h == '!' = if head t == '=' then NotEquals : lexer (tail t) else Bang : lexer t
+  | h == '=' = if head t == '=' then Equals : lexer (tail t) else Assign : lexer t
   | h == '"' = let (chars, t') = span (/= '"') t in StringToken chars : lexer (tail t')
   | isSpace h = lexer t
   | isDigit h = let (digits, t') = span isDigit t in Number (h : digits) : lexer t'
