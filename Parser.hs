@@ -39,10 +39,12 @@ data StatementNode
 
 newtype AstNode = AstNode [StatementNode]
 
-parseExpression :: [Token] -> Either (ExpressionNode, [Token]) String
+type Parser a = [Token] -> Either (a, [Token]) String
+
+parseExpression :: Parser ExpressionNode
 parseExpression = parseComparison
 
-parseComparison :: [Token] -> Either (ExpressionNode, [Token]) String
+parseComparison :: Parser ExpressionNode
 parseComparison tokens =
   case parseNumeric tokens of
     Right m -> Right m
@@ -68,7 +70,7 @@ parseComparison tokens =
             Left (right, rest') -> parseComparison' (BinaryExpressionNode NotEq left right) rest'
         _ -> Left (left, tokens)
 
-parseNumeric :: [Token] -> Either (ExpressionNode, [Token]) String
+parseNumeric :: Parser ExpressionNode
 parseNumeric tokens =
   case parseTerm tokens of
     Right m -> Right m
@@ -86,7 +88,7 @@ parseNumeric tokens =
             Left (right, rest') -> parseNumeric' (BinaryExpressionNode Subtract left right) rest'
         _ -> Left (left, tokens)
 
-parseTerm :: [Token] -> Either (ExpressionNode, [Token]) String
+parseTerm :: Parser ExpressionNode
 parseTerm tokens =
   case parseSignedFactor tokens of
     Right m -> Right m
@@ -108,14 +110,14 @@ parseTerm tokens =
             Left (right, rest') -> parseTerm' (BinaryExpressionNode Modulo left right) rest'
         _ -> Left (left, tokens)
 
-parseSignedFactor :: [Token] -> Either (ExpressionNode, [Token]) String
+parseSignedFactor :: Parser ExpressionNode
 parseSignedFactor (Minus : t) = do
   case parseFactor t of
     Right m -> Right m
     Left (expr, rest) -> Left (UnaryExpressionNode Subtract expr, rest)
 parseSignedFactor tokens = parseFactor tokens
 
-parseFactor :: [Token] -> Either (ExpressionNode, [Token]) String
+parseFactor :: Parser ExpressionNode
 parseFactor (h : t) = case h of
   Number l -> Left (NumberNode (read l), t)
   Nil -> Left (NilNode, t)
