@@ -1,8 +1,7 @@
-module Parser where
+module Parser (parseAst) where
+    
+import Parsing
 
-import Lexer (Token (..))
-
--- Todo: clashes schöner fixen, implement bang
 data Operator
   = Add
   | Subtract
@@ -25,8 +24,6 @@ data ExpressionNode
   | NumberNode Int
   deriving (Show)
 
-data ReturnNode = ReturnNil | ReturnExpression ExpressionNode deriving (Show)
-
 data StatementNode
   = BlockNode [StatementNode]
   | WhileNode ExpressionNode StatementNode
@@ -37,94 +34,163 @@ data StatementNode
   | VariableAssignNode String ExpressionNode
   deriving (Show)
 
-newtype AstNode = AstNode [StatementNode]
+parseAst :: String -> [([StatementNode], String)]
+parseAst = parse $ many statement
 
-type Parser a = [Token] -> Either (a, [Token]) String
+keyword :: String -> Parser ()
+keyword k = do
+  space
+  string k
+  space
 
-parseExpression :: Parser ExpressionNode
-parseExpression = parseComparison
+statement :: Parser StatementNode
+statement = do
+  space
+  s <- variableDeclaration <|> variableAssign <|> if' <|> while
+  space
+  return s
 
-parseComparison :: Parser ExpressionNode
-parseComparison tokens =
-  case parseNumeric tokens of
-    Right m -> Right m
-    Left (left, rest) -> parseComparison' left rest
-  where
-    parseComparison' left tokens =
-      case tokens of
-        LessThan : rest ->
-          case parseNumeric rest of
-            Right m -> Right m
-            Left (right, rest') -> parseComparison' (BinaryExpressionNode Lt left right) rest'
-        GreaterThan : rest ->
-          case parseNumeric rest of
-            Right m -> Right m
-            Left (right, rest') -> parseComparison' (BinaryExpressionNode Gt left right) rest'
-        Equals : rest ->
-          case parseNumeric rest of
-            Right m -> Right m
-            Left (right, rest') -> parseComparison' (BinaryExpressionNode Eq left right) rest'
-        NotEquals : rest ->
-          case parseNumeric rest of
-            Right m -> Right m
-            Left (right, rest') -> parseComparison' (BinaryExpressionNode NotEq left right) rest'
-        _ -> Left (left, tokens)
+variableDeclaration :: Parser StatementNode
+variableDeclaration = do
+  keyword "var"
+  name <- ident
+  keyword "="
+  value <- expression
+  keyword ";"
+  return $ VariableDeclarationNode name value
 
-parseNumeric :: Parser ExpressionNode
-parseNumeric tokens =
-  case parseTerm tokens of
-    Right m -> Right m
-    Left (left, rest) -> parseNumeric' left rest
-  where
-    parseNumeric' left tokens =
-      case tokens of
-        Plus : rest ->
-          case parseTerm rest of
-            Right m -> Right m
-            Left (right, rest') -> parseNumeric' (BinaryExpressionNode Add left right) rest'
-        Minus : rest ->
-          case parseTerm rest of
-            Right m -> Right m
-            Left (right, rest') -> parseNumeric' (BinaryExpressionNode Subtract left right) rest'
-        _ -> Left (left, tokens)
+variableAssign :: Parser StatementNode
+variableAssign = do
+  name <- ident
+  keyword "="
+  value <- expression
+  keyword ";"
+  return $ VariableAssignNode name value
 
-parseTerm :: Parser ExpressionNode
-parseTerm tokens =
-  case parseSignedFactor tokens of
-    Right m -> Right m
-    Left (left, rest) -> parseTerm' left rest
-  where
-    parseTerm' left tokens =
-      case tokens of
-        Asterisk : rest ->
-          case parseSignedFactor rest of
-            Right m -> Right m
-            Left (right, rest') -> parseTerm' (BinaryExpressionNode Multiply left right) rest'
-        Slash : rest ->
-          case parseSignedFactor rest of
-            Right m -> Right m
-            Left (right, rest') -> parseTerm' (BinaryExpressionNode Divide left right) rest'
-        Percent : rest ->
-          case parseSignedFactor rest of
-            Right m -> Right m
-            Left (right, rest') -> parseTerm' (BinaryExpressionNode Modulo left right) rest'
-        _ -> Left (left, tokens)
+block :: Parser StatementNode
+block = do
+  keyword "{"
+  statements <- many statement
+  keyword "}"
+  return $ BlockNode statements
 
-parseSignedFactor :: Parser ExpressionNode
-parseSignedFactor (Minus : t) = do
-  case parseFactor t of
-    Right m -> Right m
-    Left (expr, rest) -> Left (UnaryExpressionNode Subtract expr, rest)
-parseSignedFactor tokens = parseFactor tokens
+if' :: Parser StatementNode
+if' =
+  do
+    keyword "if"
+    condition <- expression
+    consequence <- block
+    keyword "else"
+    IfNode condition consequence <$> block
+    <|> do
+      keyword "if"
+      condition <- expression
+      consequence <- block
+      return $ IfNode condition consequence $ BlockNode []
 
-parseFactor :: Parser ExpressionNode
-parseFactor (h : t) = case h of
-  Number l -> Left (NumberNode (read l), t)
-  Nil -> Left (NilNode, t)
-  BoolTrue -> Left (BooleanNode True, t)
-  BoolFalse -> Left (BooleanNode False, t)
-  StringToken s -> Left (StringNode s, t)
-  LParen -> case parseExpression t of
-    Right m -> Right m
-    Left (expr, h : t) -> if h == RParen then Left (expr, t) else Right "Unexpected token2"
-  _ -> Right "Unexpected token"
+while :: Parser StatementNode
+while = do
+    keyword "while"
+    condition <- expression
+    WhileNode condition <$> block
+
+expression :: Parser ExpressionNode
+expression = comparison
+
+comparison' :: ExpressionNode -> Parser ExpressionNode
+comparison' left = do
+  do
+    keyword "<"
+    right <- term
+    comparison' (BinaryExpressionNode Lt left right)
+    <|> do
+      keyword ">"
+      right <- term
+      comparison' (BinaryExpressionNode Gt left right)
+    <|> do
+      keyword "=="
+      right <- term
+      comparison' (BinaryExpressionNode Eq left right)
+    <|> do
+      keyword ">"
+      right <- term
+      comparison' (BinaryExpressionNode NotEq left right)
+    <|> return left
+
+comparison :: Parser ExpressionNode
+comparison = do
+  left <- numeric
+  comparison' left
+
+numeric' :: ExpressionNode -> Parser ExpressionNode
+numeric' left =
+  do
+    keyword "+"
+    right <- term
+    numeric' (BinaryExpressionNode Add left right)
+    <|> do
+      keyword "-"
+      right <- term
+      numeric' (BinaryExpressionNode Subtract left right)
+    <|> return left
+
+numeric :: Parser ExpressionNode
+numeric = do
+  left <- term
+  numeric' left
+
+term' :: ExpressionNode -> Parser ExpressionNode
+term' left =
+  do
+    keyword "*"
+    right <- signedFactor
+    term' (BinaryExpressionNode Multiply left right)
+    <|> do
+      keyword "/"
+      right <- signedFactor
+      term' (BinaryExpressionNode Divide left right)
+    <|> do
+      keyword "%"
+      right <- signedFactor
+      term' (BinaryExpressionNode Modulo left right)
+    <|> return left
+
+term :: Parser ExpressionNode
+term = do
+  left <- signedFactor
+  term' left
+
+signedFactor :: Parser ExpressionNode
+signedFactor =
+  do
+    char '-'
+    UnaryExpressionNode Subtract <$> factor
+    <|> factor
+
+factor :: Parser ExpressionNode
+factor = number <|> string' <|> boolean <|> identifier'
+
+number :: Parser ExpressionNode
+number = do
+  n <- some digit
+  return $ NumberNode $ read n
+
+string' :: Parser ExpressionNode
+string' = do
+  char '"'
+  s <- some letter
+  char '"'
+  return $ StringNode s
+
+boolean :: Parser ExpressionNode
+boolean = do
+  b <- string "true" <|> string "false"
+  return $ BooleanNode $ b == "true"
+
+nil :: Parser ExpressionNode
+nil = do
+  string "nil"
+  return NilNode
+
+identifier' :: Parser ExpressionNode
+identifier' = IdentNode <$> ident

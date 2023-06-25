@@ -1,7 +1,8 @@
 module Main where
-
-import Lexer (lexer)
-import Parser (parseExpression, parseNumeric)
+import Parser (parseAst)
 
 main :: IO ()
-main = print "hi"
+main = do
+    code <- readFile "program.txt"
+    let ast = parseAst code
+    print ast
