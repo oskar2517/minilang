@@ -163,12 +163,16 @@ term = do
 signedFactor :: Parser ExpressionNode
 signedFactor =
   do
-    char '-'
+    keyword "-"
     UnaryExpressionNode Subtract <$> factor
     <|> factor
 
 factor :: Parser ExpressionNode
-factor = number <|> string' <|> boolean <|> identifier'
+factor = number <|> string' <|> boolean <|> identifier' <|> do
+    keyword "("
+    expr <- expression
+    keyword ")"
+    return expr
 
 number :: Parser ExpressionNode
 number = do
