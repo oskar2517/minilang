@@ -45,12 +45,6 @@ data StatementNode
 parseAst :: String -> [([StatementNode], String)]
 parseAst = parse $ many statement
 
-keyword :: String -> Parser ()
-keyword k = do
-  space
-  string k
-  space
-
 statement :: Parser StatementNode
 statement = do
   space
@@ -60,38 +54,38 @@ statement = do
 
 variableDeclaration :: Parser StatementNode
 variableDeclaration = do
-  keyword "var"
+  token $ string "var"
   name <- ident
-  keyword "="
+  token $ string "="
   value <- expression
-  keyword ";"
+  token $ char ';'
   return $ VariableDeclarationNode name value
 
 variableAssign :: Parser StatementNode
 variableAssign = do
   name <- ident
-  keyword "="
+  token $ char '='
   value <- expression
-  keyword ";"
+  token $ char ';'
   return $ VariableAssignNode name value
 
 block :: Parser StatementNode
 block = do
-  keyword "{"
+  token $ char '{'
   statements <- many statement
-  keyword "}"
+  token $ char '}'
   return $ BlockNode statements
 
 if' :: Parser StatementNode
 if' =
   do
-    keyword "if"
+    token $ string "if"
     condition <- expression
     consequence <- block
-    keyword "else"
+    token $ string "else"
     IfNode condition consequence <$> block
     <|> do
-      keyword "if"
+      token $ string "if"
       condition <- expression
       consequence <- block
       return $ IfNode condition consequence $ BlockNode []
@@ -99,12 +93,12 @@ if' =
 expressionStatement :: Parser StatementNode
 expressionStatement = do
   expr <- expression
-  keyword ";"
+  token $ char ';'
   return $ ExpressionStatement expr
 
 while :: Parser StatementNode
 while = do
-  keyword "while"
+  token $ string "while"
   condition <- expression
   WhileNode condition <$> block
 
@@ -114,27 +108,27 @@ expression = comparison
 comparison' :: ExpressionNode -> Parser ExpressionNode
 comparison' left = do
   do
-    keyword "<"
+    token $ char '<'
     right <- term
     comparison' (BinaryExpressionNode Lt left right)
     <|> do
-      keyword "<="
+      token $ string "<="
       right <- term
       comparison' (BinaryExpressionNode Lte left right)
     <|> do
-      keyword ">"
+      token $ string ">"
       right <- term
       comparison' (BinaryExpressionNode Gt left right)
     <|> do
-      keyword ">="
+      token $ string ">="
       right <- term
       comparison' (BinaryExpressionNode Gte left right)
     <|> do
-      keyword "=="
+      token $ string "=="
       right <- term
       comparison' (BinaryExpressionNode Eq left right)
     <|> do
-      keyword ">"
+      token $ char '>'
       right <- term
       comparison' (BinaryExpressionNode NotEq left right)
     <|> return left
@@ -147,11 +141,11 @@ comparison = do
 numeric' :: ExpressionNode -> Parser ExpressionNode
 numeric' left =
   do
-    keyword "+"
+    token $ char '+'
     right <- term
     numeric' (BinaryExpressionNode Add left right)
     <|> do
-      keyword "-"
+      token $ char '-'
       right <- term
       numeric' (BinaryExpressionNode Subtract left right)
     <|> return left
@@ -164,15 +158,15 @@ numeric = do
 term' :: ExpressionNode -> Parser ExpressionNode
 term' left =
   do
-    keyword "*"
+    token $ char '*'
     right <- signedFactor
     term' (BinaryExpressionNode Multiply left right)
     <|> do
-      keyword "/"
+      token $ char '/'
       right <- signedFactor
       term' (BinaryExpressionNode Divide left right)
     <|> do
-      keyword "%"
+      token $ char '%'
       right <- signedFactor
       term' (BinaryExpressionNode Modulo left right)
     <|> return left
@@ -185,21 +179,21 @@ term = do
 signedFactor :: Parser ExpressionNode
 signedFactor =
   do
-    keyword "-"
+    token $ char '-'
     UnaryExpressionNode Subtract <$> access
     <|> access
 
 access' :: ExpressionNode -> Parser ExpressionNode
 access' left =
   do
-    keyword "["
+    token $ char '['
     index <- expression
-    keyword "]"
+    token $ char ']'
     access' (ArrayAccessNode left index)
     <|> do
-      keyword "("
+      token $ char '('
       arguments <- expressionList
-      keyword ")"
+      token $ char ')'
       access' (CallNode left arguments)
     <|> return left
 
@@ -215,9 +209,9 @@ factor = number <|> string' <|> boolean <|> function <|> identifier' <|> parenEx
 
 parenExpression :: Parser ExpressionNode
 parenExpression = do
-  keyword "("
+  token $ char '('
   expr <- expression
-  keyword ")"
+  token $ char ')'
   return expr
 
 number :: Parser ExpressionNode
@@ -250,27 +244,27 @@ expressionList =
   many $
     do
       expr <- expression
-      keyword ","
+      token $ char ','
       return expr
       <|> expression
 
 function :: Parser ExpressionNode
 function = do
-  keyword "func"
-  keyword "("
+  token $ string "func"
+  token $ char '('
   parameters <-
     many $
       do
         param <- ident
-        keyword ","
+        token $ char ','
         return param
         <|> ident
-  keyword ")"
+  token $ char ')'
   FunctionNode parameters <$> block
 
 array :: Parser ExpressionNode
 array = do
-  keyword "["
+  token $ char '['
   values <- expressionList
-  keyword "]"
+  token $ char ']'
   return $ ArrayNode values
