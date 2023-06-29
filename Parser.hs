@@ -14,6 +14,7 @@ data Operator
   | NotEq
   deriving (Show)
 
+-- Todo: Use record syntax
 data ExpressionNode
   = BinaryExpressionNode Operator ExpressionNode ExpressionNode
   | UnaryExpressionNode Operator ExpressionNode
@@ -25,6 +26,7 @@ data ExpressionNode
   | ArrayNode [ExpressionNode]
   | ArrayAccessNode ExpressionNode ExpressionNode
   | CallNode ExpressionNode [ExpressionNode]
+  | FunctionNode [String] StatementNode
   deriving (Show)
 
 data StatementNode
@@ -192,7 +194,7 @@ access =
     <|> factor
 
 factor :: Parser ExpressionNode
-factor = number <|> string' <|> boolean <|> identifier' <|> parenExpression <|> array
+factor = number <|> string' <|> boolean <|> function <|> identifier' <|> parenExpression <|> array
 
 parenExpression :: Parser ExpressionNode
 parenExpression = do
@@ -234,6 +236,18 @@ expressionList =
       keyword ","
       return expr
       <|> expression
+
+function :: Parser ExpressionNode
+function = do
+    keyword "func"
+    keyword "("
+    parameters <- many $ do
+        param <- ident
+        keyword ","
+        return param
+        <|> ident
+    keyword ")"
+    FunctionNode parameters <$> block
 
 array :: Parser ExpressionNode
 array = do
