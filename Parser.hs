@@ -97,10 +97,10 @@ if' =
       return $ IfNode condition consequence $ BlockNode []
 
 expressionStatement :: Parser StatementNode
-expressionStatement = do 
-    expr <- expression
-    keyword ";"
-    return $ ExpressionStatement expr
+expressionStatement = do
+  expr <- expression
+  keyword ";"
+  return $ ExpressionStatement expr
 
 while :: Parser StatementNode
 while = do
