@@ -24,6 +24,7 @@ data ExpressionNode
   | NumberNode Int
   | ArrayNode [ExpressionNode]
   | ArrayAccessNode ExpressionNode ExpressionNode
+  | CallNode ExpressionNode [ExpressionNode]
   deriving (Show)
 
 data StatementNode
@@ -176,6 +177,11 @@ access' left =
     index <- expression
     keyword "]"
     access' (ArrayAccessNode left index)
+    <|> do
+      keyword "("
+      arguments <- expressionList
+      keyword ")"
+      access' (CallNode left arguments)
     <|> return left
 
 access :: Parser ExpressionNode
