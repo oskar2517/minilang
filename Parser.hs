@@ -9,7 +9,9 @@ data Operator
   | Divide
   | Modulo
   | Lt
+  | Lte
   | Gt
+  | Gte
   | Eq
   | NotEq
   deriving (Show)
@@ -109,9 +111,17 @@ comparison' left = do
     right <- term
     comparison' (BinaryExpressionNode Lt left right)
     <|> do
+        keyword "<="
+        right <- term
+        comparison' (BinaryExpressionNode Lte left right)
+    <|> do
       keyword ">"
       right <- term
       comparison' (BinaryExpressionNode Gt left right)
+    <|> do
+        keyword ">="
+        right <- term
+        comparison' (BinaryExpressionNode Gte left right)
     <|> do
       keyword "=="
       right <- term
