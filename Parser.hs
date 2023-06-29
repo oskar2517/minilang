@@ -16,7 +16,6 @@ data Operator
   | NotEq
   deriving (Show)
 
--- Todo: Use record syntax
 data ExpressionNode
   = BinaryExpressionNode Operator ExpressionNode ExpressionNode
   | UnaryExpressionNode Operator ExpressionNode
@@ -26,9 +25,9 @@ data ExpressionNode
   | NilNode
   | NumberNode Int
   | ArrayNode [ExpressionNode]
-  | ArrayAccessNode ExpressionNode ExpressionNode
-  | CallNode ExpressionNode [ExpressionNode]
-  | FunctionNode [String] StatementNode
+  | ArrayAccessNode {target :: ExpressionNode, index :: ExpressionNode}
+  | CallNode {target :: ExpressionNode, arguments :: [ExpressionNode]}
+  | FunctionNode {parameters :: [String], body :: StatementNode}
   deriving (Show)
 
 data StatementNode
