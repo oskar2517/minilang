@@ -1,5 +1,5 @@
 module Parser (parseAst) where
-    
+
 import Parsing
 
 data Operator
@@ -22,6 +22,8 @@ data ExpressionNode
   | IdentNode String
   | NilNode
   | NumberNode Int
+  | ArrayNode [ExpressionNode]
+  | ArrayAccessNode ExpressionNode ExpressionNode
   deriving (Show)
 
 data StatementNode
@@ -90,9 +92,9 @@ if' =
 
 while :: Parser StatementNode
 while = do
-    keyword "while"
-    condition <- expression
-    WhileNode condition <$> block
+  keyword "while"
+  condition <- expression
+  WhileNode condition <$> block
 
 expression :: Parser ExpressionNode
 expression = comparison
@@ -164,15 +166,34 @@ signedFactor :: Parser ExpressionNode
 signedFactor =
   do
     keyword "-"
-    UnaryExpressionNode Subtract <$> factor
+    UnaryExpressionNode Subtract <$> access
+    <|> access
+
+access' :: ExpressionNode -> Parser ExpressionNode
+access' left =
+  do
+    keyword "["
+    index <- expression
+    keyword "]"
+    access' (ArrayAccessNode left index)
+    <|> return left
+
+access :: Parser ExpressionNode
+access =
+  do
+    left <- factor
+    access' left
     <|> factor
 
 factor :: Parser ExpressionNode
-factor = number <|> string' <|> boolean <|> identifier' <|> do
-    keyword "("
-    expr <- expression
-    keyword ")"
-    return expr
+factor = number <|> string' <|> boolean <|> identifier' <|> parenExpression <|> array
+
+parenExpression :: Parser ExpressionNode
+parenExpression = do
+  keyword "("
+  expr <- expression
+  keyword ")"
+  return expr
 
 number :: Parser ExpressionNode
 number = do
@@ -198,3 +219,19 @@ nil = do
 
 identifier' :: Parser ExpressionNode
 identifier' = IdentNode <$> ident
+
+expressionList :: Parser [ExpressionNode]
+expressionList =
+  many $
+    do
+      expr <- expression
+      keyword ","
+      return expr
+      <|> expression
+
+array :: Parser ExpressionNode
+array = do
+  keyword "["
+  values <- expressionList
+  keyword "]"
+  return $ ArrayNode values
