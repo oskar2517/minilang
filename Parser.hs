@@ -39,6 +39,7 @@ data StatementNode
   | ReturnNode
   | VariableDeclarationNode String ExpressionNode
   | VariableAssignNode String ExpressionNode
+  | ExpressionStatement ExpressionNode
   deriving (Show)
 
 parseAst :: String -> [([StatementNode], String)]
@@ -53,7 +54,7 @@ keyword k = do
 statement :: Parser StatementNode
 statement = do
   space
-  s <- variableDeclaration <|> variableAssign <|> if' <|> while
+  s <- variableDeclaration <|> variableAssign <|> if' <|> while <|> expressionStatement
   space
   return s
 
@@ -95,6 +96,12 @@ if' =
       consequence <- block
       return $ IfNode condition consequence $ BlockNode []
 
+expressionStatement :: Parser StatementNode
+expressionStatement = do 
+    expr <- expression
+    keyword ";"
+    return $ ExpressionStatement expr
+
 while :: Parser StatementNode
 while = do
   keyword "while"
@@ -111,17 +118,17 @@ comparison' left = do
     right <- term
     comparison' (BinaryExpressionNode Lt left right)
     <|> do
-        keyword "<="
-        right <- term
-        comparison' (BinaryExpressionNode Lte left right)
+      keyword "<="
+      right <- term
+      comparison' (BinaryExpressionNode Lte left right)
     <|> do
       keyword ">"
       right <- term
       comparison' (BinaryExpressionNode Gt left right)
     <|> do
-        keyword ">="
-        right <- term
-        comparison' (BinaryExpressionNode Gte left right)
+      keyword ">="
+      right <- term
+      comparison' (BinaryExpressionNode Gte left right)
     <|> do
       keyword "=="
       right <- term
@@ -249,15 +256,17 @@ expressionList =
 
 function :: Parser ExpressionNode
 function = do
-    keyword "func"
-    keyword "("
-    parameters <- many $ do
+  keyword "func"
+  keyword "("
+  parameters <-
+    many $
+      do
         param <- ident
         keyword ","
         return param
         <|> ident
-    keyword ")"
-    FunctionNode parameters <$> block
+  keyword ")"
+  FunctionNode parameters <$> block
 
 array :: Parser ExpressionNode
 array = do
