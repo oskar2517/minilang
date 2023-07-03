@@ -1,8 +1,11 @@
 module Main where
 import Parser (parseAst)
+import Interpreter (execute, Context)
 
-main :: IO ()
+main :: IO Context
 main = do
     code <- readFile "program.txt"
     let ast = parseAst code
-    print ast
+    case ast of
+        Nothing -> error "Syntax error in file"
+        Just a -> execute a

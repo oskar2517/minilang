@@ -1,4 +1,4 @@
-module Parser (parseAst, Ast, StatementNode (..), ExpressionNode (..), Operator (..)) where
+module Parser (parseAst, StatementNode (..), ExpressionNode (..), Operator (..)) where
 
 import Parsing
 
@@ -7,7 +7,7 @@ data Operator
   | Subtract
   | Multiply
   | Divide
-  | Modulo
+  | Modulo -- todo: not implemented
   | Lt
   | Lte
   | Gt
@@ -15,8 +15,6 @@ data Operator
   | Eq
   | NotEq
   deriving (Show)
-
-type Ast = [StatementNode]
 
 data ExpressionNode
   = BinaryExpressionNode Operator ExpressionNode ExpressionNode
@@ -38,28 +36,30 @@ data StatementNode
   | IfNode ExpressionNode StatementNode StatementNode
   | ExpressionStatementNode ExpressionNode
   | ReturnNode
-  | VariableDeclarationNode String ExpressionNode
   | VariableAssignNode String ExpressionNode
+  | PrintStatementNode ExpressionNode
   deriving (Show)
 
-parseAst :: String -> [([StatementNode], String)]
-parseAst = parse $ many statement
+parseAst :: String -> Maybe StatementNode
+parseAst code = do
+    let ast = head $ parse (many statement) code
+    if null $ snd ast then
+        Just (BlockNode $ fst ast)
+    else Nothing
 
 statement :: Parser StatementNode
 statement = do
   space
-  s <- variableDeclaration <|> variableAssign <|> if' <|> while <|> expressionStatement
+  s <- printStatement <|> variableAssign <|> if' <|> while <|> expressionStatement
   space
   return s
 
-variableDeclaration :: Parser StatementNode
-variableDeclaration = do
-  token $ string "var"
-  name <- ident
-  token $ string "="
-  value <- expression
-  token $ char ';'
-  return $ VariableDeclarationNode name value
+printStatement :: Parser StatementNode
+printStatement = do
+    token $ string "print"
+    expr <- expression
+    token $ char ';'
+    return $ PrintStatementNode expr
 
 variableAssign :: Parser StatementNode
 variableAssign = do
