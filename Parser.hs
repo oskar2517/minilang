@@ -1,4 +1,4 @@
-module Parser (parseAst) where
+module Parser (parseAst, Ast, StatementNode (..), ExpressionNode (..), Operator (..)) where
 
 import Parsing
 
@@ -16,6 +16,8 @@ data Operator
   | NotEq
   deriving (Show)
 
+type Ast = [StatementNode]
+
 data ExpressionNode
   = BinaryExpressionNode Operator ExpressionNode ExpressionNode
   | UnaryExpressionNode Operator ExpressionNode
@@ -23,7 +25,7 @@ data ExpressionNode
   | BooleanNode Bool
   | IdentNode String
   | NilNode
-  | NumberNode Int
+  | NumberNode Float
   | ArrayNode [ExpressionNode]
   | ArrayAccessNode {target :: ExpressionNode, index :: ExpressionNode}
   | CallNode {target :: ExpressionNode, arguments :: [ExpressionNode]}
@@ -38,7 +40,6 @@ data StatementNode
   | ReturnNode
   | VariableDeclarationNode String ExpressionNode
   | VariableAssignNode String ExpressionNode
-  | ExpressionStatement ExpressionNode
   deriving (Show)
 
 parseAst :: String -> [([StatementNode], String)]
@@ -93,7 +94,7 @@ expressionStatement :: Parser StatementNode
 expressionStatement = do
   expr <- expression
   token $ char ';'
-  return $ ExpressionStatement expr
+  return $ ExpressionStatementNode expr
 
 while :: Parser StatementNode
 while = do
@@ -215,7 +216,13 @@ parenExpression = do
 
 number :: Parser ExpressionNode
 number = do
-  n <- some digit
+  n <-
+    do
+      i <- some digit
+      token $ char '.'
+      f <- some digit
+      return $ i ++ "." ++ f
+      <|> some digit
   return $ NumberNode $ read n
 
 string' :: Parser ExpressionNode
