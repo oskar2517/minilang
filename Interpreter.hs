@@ -15,9 +15,15 @@ instance Num Object where
   (NumberObject x) + (NumberObject y) = NumberObject $ x + y
   (NumberObject x) - (NumberObject y) = NumberObject $ x - y
   (NumberObject x) * (NumberObject y) = NumberObject $ x * y
+  negate (NumberObject x) = NumberObject $ -x
+  abs (NumberObject x) = NumberObject $ abs x
+  signum (NumberObject x) = NumberObject $ signum x
+  fromInteger x = NumberObject $ fromInteger x
 
 instance Fractional Object where
   (NumberObject x) / (NumberObject y) = NumberObject $ x / y
+  recip (NumberObject x) = NumberObject $ recip x
+  fromRational x = NumberObject $ fromRational x
 
 instance Eq Object where
   (NumberObject x) == (NumberObject y) = x == y
