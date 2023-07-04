@@ -95,8 +95,8 @@ executeWhile context condition body = do
     BooleanObject b ->
       if b
         then do
-          let context'' = executeStatement context body
-          executeWhile context'' condition body
+          context'' <- executeStatement context body
+          executeWhile (pure context'') condition body
         else context
     _ -> error "While condition must be of type boolean"
 
@@ -107,35 +107,29 @@ executeStatement context (BlockNode n) = do
   case parent context'' of
     Just c -> pure c
     Nothing -> error "<internal error>"
-
 executeStatement context (PrintStatementNode e) = do
   context' <- context
   print $ evalExpr context' e
-  context
-
+  return context'
 executeStatement context (IfNode condition consequence alternative) = do
   context' <- context
   case evalExpr context' condition of
     BooleanObject b -> if b then executeStatement context consequence else executeStatement context alternative
     _ -> error "If condition must be of type boolean"
-
 executeStatement context (WhileNode condition body) = do
   executeWhile context condition body
-
 executeStatement context (VariableDeclarationNode name expr) = do
   context' <- context
   let value = evalExpr context' expr
   return $ declareVariable name value context'
-
 executeStatement context (VariableAssignNode name expr) = do
   context' <- context
   let value = evalExpr context' expr
   return $ setVariable name value context'
-
 executeStatement context (ExpressionStatementNode expr) = do
-    context' <- context
-    let v = evalExpr context' expr -- TODO: ignorieren
-    context
+  context' <- context
+  let v = evalExpr context' expr -- TODO: ignorieren
+  context
 
 execute :: StatementNode -> IO Context
 execute = executeStatement (pure $ Context Nothing empty)
