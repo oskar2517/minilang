@@ -107,7 +107,7 @@ executeStatement context (BlockNode n) = do
   case parent context'' of
     Just c -> pure c
     Nothing -> error "<internal error>"
-    
+
 executeStatement context (PrintStatementNode e) = do
   context' <- context
   print $ evalExpr context' e
@@ -131,6 +131,11 @@ executeStatement context (VariableAssignNode name expr) = do
   context' <- context
   let value = evalExpr context' expr
   return $ setVariable name value context'
+
+executeStatement context (ExpressionStatementNode expr) = do
+    context' <- context
+    let v = evalExpr context' expr -- TODO: ignorieren
+    context
 
 execute :: StatementNode -> IO Context
 execute = executeStatement (pure $ Context Nothing empty)
