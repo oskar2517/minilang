@@ -1,6 +1,6 @@
 module Interpreter (execute, Context) where
 
-import Data.Map (Map, empty, lookup, member, insert)
+import Data.Map (Map, empty, insert, lookup, member)
 import Parser (ExpressionNode (..), Operator (..), StatementNode (..))
 
 data Object
@@ -29,29 +29,26 @@ instance Ord Object where
 
 data Context = Context {parent :: Maybe Context, variables :: Map String Object} deriving (Show)
 
-findVariableContext :: String -> Maybe Context -> Maybe Context
-findVariableContext name (Just context) = if member name (variables context) then Just context else findVariableContext name $ parent context
-findVariableContext _ Nothing = Nothing
+findVariableContext :: String -> Maybe Context -> [Context] -> Maybe (Context, [Context])
+findVariableContext name (Just context) traversed = if member name (variables context) then Just (context, traversed) else findVariableContext name (parent context) (context : traversed)
+findVariableContext _ Nothing _ = Nothing
 
 findVariable :: String -> Context -> Object
-findVariable name context = case findVariableContext name (Just context) of
-    Just context -> case Data.Map.lookup name $ variables context of
-        Just o -> o
-        Nothing -> error "Variable not found"
-    Nothing -> error "Variable not found"
+findVariable name context = case findVariableContext name (Just context) [] of
+  Just (context, _) -> case Data.Map.lookup name $ variables context of
+    Just o -> o
+    Nothing -> error $ "<internal error>"
+  Nothing -> error $ "Variable " ++ name ++ " not declared"
 
-setVariable' :: String -> Object -> Maybe Context -> [Context] -> Maybe Context
-setVariable' name value (Just context) traversed = do
-    if member name (variables context) then do
+declareVariable :: String -> Object -> Context -> Context
+declareVariable name value context = Context (parent context) (insert name value (variables context))
+
+setVariable :: String -> Object -> Context -> Context
+setVariable name value context = case findVariableContext name (Just context) [] of
+    Just (context, traversed) -> do
         let newContext = Context (parent context) (insert name value (variables context))
-        Just $ foldl (\ context h -> Context (Just context) (variables h)) newContext (reverse traversed)
-    else setVariable' name value (parent context) (context : traversed)
-setVariable' _ _ Nothing _ = Nothing
-
-setVariable'' :: String -> Object -> Context -> Context
-setVariable'' name value context = case setVariable' name value (Just context) [] of
-    Just c -> c
-    Nothing -> Context (parent context) (insert name value (variables context))
+        foldl (\context h -> Context (Just context) (variables h)) newContext (reverse traversed)
+    Nothing -> error $ "Variable " ++ name ++ " not declared"
 
 evalExpr :: Context -> ExpressionNode -> Object
 evalExpr context (NumberNode n) = NumberObject n
@@ -72,31 +69,32 @@ evalExpr context (BinaryExpressionNode Gt left right) = BooleanObject $ evalExpr
 evalExpr context (BinaryExpressionNode Gte left right) = BooleanObject $ evalExpr context left >= evalExpr context right
 
 executeBlock :: IO Context -> [StatementNode] -> IO Context
-executeBlock context [] = context
-executeBlock context (h:t) = do
-    let newContext = executeStatement context h
-    executeBlock newContext t
+executeBlock = foldl executeStatement
 
 executeStatement :: IO Context -> StatementNode -> IO Context
 executeStatement context (BlockNode n) = do
-    con <- context
-    con2 <- executeBlock (pure $ Context (Just con) empty) n
-    case parent con2 of
-        Just c -> pure c
-        Nothing -> pure con
+  context' <- context
+  context'' <- executeBlock (pure $ Context (Just context') empty) n
+  case parent context'' of
+    Just c -> pure c
+    Nothing -> error "<internal>"
 executeStatement context (PrintStatementNode e) = do
-    con <- context
-    print $ evalExpr con e
-    context
+  context' <- context
+  print $ evalExpr context' e
+  context
 executeStatement context (IfNode condition consequence alternative) = do
-    con <- context
-    if evalExpr con condition == BooleanObject True
-        then executeStatement context consequence
-        else executeStatement context alternative
+  context' <- context
+  if evalExpr context' condition == BooleanObject True
+    then executeStatement context consequence
+    else executeStatement context alternative
+executeStatement context (VariableDeclarationNode name expr) = do
+  context' <- context
+  let value = evalExpr context' expr
+  return $ declareVariable name value context'
 executeStatement context (VariableAssignNode name expr) = do
-    con <- context
-    let value = evalExpr con expr
-    return $ setVariable'' name value con
+    context' <- context
+    let value = evalExpr context' expr
+    return $ setVariable name value context'
 
 execute :: StatementNode -> IO Context
 execute = executeStatement (pure $ Context Nothing empty)

@@ -36,30 +36,40 @@ data StatementNode
   | IfNode ExpressionNode StatementNode StatementNode
   | ExpressionStatementNode ExpressionNode
   | ReturnNode
+  | VariableDeclarationNode String ExpressionNode
   | VariableAssignNode String ExpressionNode
   | PrintStatementNode ExpressionNode
   deriving (Show)
 
 parseAst :: String -> Maybe StatementNode
 parseAst code = do
-    let ast = head $ parse (many statement) code
-    if null $ snd ast then
-        Just (BlockNode $ fst ast)
+  let ast = head $ parse (many statement) code
+  if null $ snd ast
+    then Just (BlockNode $ fst ast)
     else Nothing
 
 statement :: Parser StatementNode
 statement = do
   space
-  s <- printStatement <|> variableAssign <|> if' <|> while <|> expressionStatement
+  s <- printStatement <|> variableDeclaration <|> variableAssign <|> if' <|> while <|> expressionStatement
   space
   return s
 
+variableDeclaration :: Parser StatementNode
+variableDeclaration = do
+  token $ string "var"
+  name <- ident
+  token $ string "="
+  value <- expression
+  token $ char ';'
+  return $ VariableDeclarationNode name value
+
 printStatement :: Parser StatementNode
 printStatement = do
-    token $ string "print"
-    expr <- expression
-    token $ char ';'
-    return $ PrintStatementNode expr
+  token $ string "print"
+  expr <- expression
+  token $ char ';'
+  return $ PrintStatementNode expr
 
 variableAssign :: Parser StatementNode
 variableAssign = do
