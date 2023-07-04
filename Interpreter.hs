@@ -51,6 +51,7 @@ setVariable name value context = case findVariableContext name (Just context) []
     Nothing -> error $ "Variable " ++ name ++ " not declared"
 
 evalExpr :: Context -> ExpressionNode -> Object
+evalExpr context (ArrayNode v) = ArrayObject (map (evalExpr context) v)
 evalExpr context (NumberNode n) = NumberObject n
 evalExpr context (StringNode s) = StringObject s
 evalExpr context (IdentNode n) = findVariable n context
@@ -67,6 +68,12 @@ evalExpr context (BinaryExpressionNode Lt left right) = BooleanObject $ evalExpr
 evalExpr context (BinaryExpressionNode Lte left right) = BooleanObject $ evalExpr context left <= evalExpr context right
 evalExpr context (BinaryExpressionNode Gt left right) = BooleanObject $ evalExpr context left > evalExpr context right
 evalExpr context (BinaryExpressionNode Gte left right) = BooleanObject $ evalExpr context left >= evalExpr context right
+evalExpr context (ArrayAccessNode target index) = case evalExpr context target of
+    ArrayObject v -> do
+        case evalExpr context index of
+            NumberObject i -> v !! round i
+            _ -> error "Array index must be a number"
+    _ -> error "Trying to index non-array"
 
 executeBlock :: IO Context -> [StatementNode] -> IO Context
 executeBlock = foldl executeStatement
