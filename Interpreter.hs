@@ -9,7 +9,6 @@ data Object
   | ArrayObject [Object]
   | BooleanObject Bool
   | NilObject
-  deriving (Show)
 
 instance Num Object where
   (NumberObject x) + (NumberObject y) = NumberObject $ x + y
@@ -32,6 +31,13 @@ instance Eq Object where
 
 instance Ord Object where
   compare (NumberObject x) (NumberObject y) = compare x y
+
+instance Show Object where
+    show (NumberObject n) = if n == fromInteger (round n) then show $ floor n else show n
+    show (StringObject s) = s
+    show (ArrayObject v) = show v
+    show (BooleanObject b) = if b then "true" else "false"
+    show NilObject = "nil"
 
 mod' :: Object -> Object -> Object
 mod' (NumberObject x) (NumberObject y) = NumberObject $ fromIntegral $ floor x `mod` floor y
