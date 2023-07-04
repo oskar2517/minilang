@@ -107,21 +107,26 @@ executeStatement context (BlockNode n) = do
   case parent context'' of
     Just c -> pure c
     Nothing -> error "<internal error>"
+    
 executeStatement context (PrintStatementNode e) = do
   context' <- context
   print $ evalExpr context' e
   context
+
 executeStatement context (IfNode condition consequence alternative) = do
   context' <- context
   case evalExpr context' condition of
     BooleanObject b -> if b then executeStatement context consequence else executeStatement context alternative
     _ -> error "If condition must be of type boolean"
+
 executeStatement context (WhileNode condition body) = do
   executeWhile context condition body
+
 executeStatement context (VariableDeclarationNode name expr) = do
   context' <- context
   let value = evalExpr context' expr
   return $ declareVariable name value context'
+
 executeStatement context (VariableAssignNode name expr) = do
   context' <- context
   let value = evalExpr context' expr
