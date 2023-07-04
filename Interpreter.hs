@@ -120,10 +120,11 @@ executeStatement context (PrintStatementNode e) = do
 executeStatement context (IfNode condition consequence alternative) = do
   context' <- context
   case evalExpr context' condition of
-    BooleanObject b -> if b then executeStatement context consequence else executeStatement context alternative
+    BooleanObject b -> if b then executeStatement (pure context') consequence else executeStatement (pure context') alternative
     _ -> error "If condition must be of type boolean"
-executeStatement context (WhileNode condition body) = do
-  executeWhile context condition body
+executeStatement context (WhileNode condition body) = do 
+    context' <- context
+    executeWhile (pure context') condition body
 executeStatement context (VariableDeclarationNode name expr) = do
   context' <- context
   let value = evalExpr context' expr
