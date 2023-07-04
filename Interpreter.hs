@@ -27,6 +27,9 @@ instance Eq Object where
 instance Ord Object where
   compare (NumberObject x) (NumberObject y) = compare x y
 
+mod' :: Object -> Object -> Object
+mod' (NumberObject x) (NumberObject y) = NumberObject $ fromIntegral $ floor x `mod` floor y
+
 data Context = Context {parent :: Maybe Context, variables :: Map String Object} deriving (Show)
 
 findVariableContext :: String -> Maybe Context -> [Context] -> Maybe (Context, [Context])
@@ -45,10 +48,10 @@ declareVariable name value context = Context (parent context) (insert name value
 
 setVariable :: String -> Object -> Context -> Context
 setVariable name value context = case findVariableContext name (Just context) [] of
-    Just (context, traversed) -> do
-        let newContext = Context (parent context) (insert name value (variables context))
-        foldl (\context h -> Context (Just context) (variables h)) newContext (reverse traversed)
-    Nothing -> error $ "Variable " ++ name ++ " not declared"
+  Just (context, traversed) -> do
+    let newContext = Context (parent context) (insert name value (variables context))
+    foldl (\context h -> Context (Just context) (variables h)) newContext (reverse traversed)
+  Nothing -> error $ "Variable " ++ name ++ " not declared"
 
 evalExpr :: Context -> ExpressionNode -> Object
 evalExpr context (ArrayNode v) = ArrayObject (map (evalExpr context) v)
@@ -68,15 +71,28 @@ evalExpr context (BinaryExpressionNode Lt left right) = BooleanObject $ evalExpr
 evalExpr context (BinaryExpressionNode Lte left right) = BooleanObject $ evalExpr context left <= evalExpr context right
 evalExpr context (BinaryExpressionNode Gt left right) = BooleanObject $ evalExpr context left > evalExpr context right
 evalExpr context (BinaryExpressionNode Gte left right) = BooleanObject $ evalExpr context left >= evalExpr context right
+evalExpr context (BinaryExpressionNode Modulo left right) = mod' (evalExpr context left) (evalExpr context right)
 evalExpr context (ArrayAccessNode target index) = case evalExpr context target of
-    ArrayObject v -> do
-        case evalExpr context index of
-            NumberObject i -> v !! round i
-            _ -> error "Array index must be a number"
-    _ -> error "Trying to index non-array"
+  ArrayObject v -> do
+    case evalExpr context index of
+      NumberObject i -> v !! floor i
+      _ -> error "Array index must be a number"
+  _ -> error "Trying to index non-array"
 
 executeBlock :: IO Context -> [StatementNode] -> IO Context
 executeBlock = foldl executeStatement
+
+executeWhile :: IO Context -> ExpressionNode -> StatementNode -> IO Context
+executeWhile context condition body = do
+  context' <- context
+  case evalExpr context' condition of
+    BooleanObject b ->
+      if b
+        then do
+          let context'' = executeStatement context body
+          executeWhile context'' condition body
+        else context
+    _ -> error "While condition must be of type boolean"
 
 executeStatement :: IO Context -> StatementNode -> IO Context
 executeStatement context (BlockNode n) = do
@@ -84,24 +100,26 @@ executeStatement context (BlockNode n) = do
   context'' <- executeBlock (pure $ Context (Just context') empty) n
   case parent context'' of
     Just c -> pure c
-    Nothing -> error "<internal>"
+    Nothing -> error "<internal error>"
 executeStatement context (PrintStatementNode e) = do
   context' <- context
   print $ evalExpr context' e
   context
 executeStatement context (IfNode condition consequence alternative) = do
   context' <- context
-  if evalExpr context' condition == BooleanObject True
-    then executeStatement context consequence
-    else executeStatement context alternative
+  case evalExpr context' condition of
+    BooleanObject b -> if b then executeStatement context consequence else executeStatement context alternative
+    _ -> error "If condition must be of type boolean"
+executeStatement context (WhileNode condition body) = do
+  executeWhile context condition body
 executeStatement context (VariableDeclarationNode name expr) = do
   context' <- context
   let value = evalExpr context' expr
   return $ declareVariable name value context'
 executeStatement context (VariableAssignNode name expr) = do
-    context' <- context
-    let value = evalExpr context' expr
-    return $ setVariable name value context'
+  context' <- context
+  let value = evalExpr context' expr
+  return $ setVariable name value context'
 
 execute :: StatementNode -> IO Context
 execute = executeStatement (pure $ Context Nothing empty)

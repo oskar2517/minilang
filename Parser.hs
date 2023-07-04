@@ -7,7 +7,7 @@ data Operator
   | Subtract
   | Multiply
   | Divide
-  | Modulo -- todo: not implemented
+  | Modulo
   | Lt
   | Lte
   | Gt
