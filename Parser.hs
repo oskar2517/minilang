@@ -138,6 +138,10 @@ comparison' left = do
       right <- term
       comparison' (BinaryExpressionNode Eq left right)
     <|> do
+      token $ string "!="
+      right <- term
+      comparison' (BinaryExpressionNode NotEq left right)
+    <|> do
       token $ char '>'
       right <- term
       comparison' (BinaryExpressionNode NotEq left right)
