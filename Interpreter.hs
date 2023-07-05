@@ -1,4 +1,4 @@
-module Interpreter (execute, Context) where
+module Interpreter (execute) where
 
 import Data.Map (Map, empty, insert, lookup, member)
 import Parser (ExpressionNode (..), Operator (..), StatementNode (..))
@@ -33,11 +33,11 @@ instance Ord Object where
   compare (NumberObject x) (NumberObject y) = compare x y
 
 instance Show Object where
-    show (NumberObject n) = if n == fromInteger (round n) then show $ floor n else show n
-    show (StringObject s) = s
-    show (ArrayObject v) = show v
-    show (BooleanObject b) = if b then "true" else "false"
-    show NilObject = "nil"
+  show (NumberObject n) = if n == fromInteger (round n) then show $ floor n else show n
+  show (StringObject s) = s
+  show (ArrayObject v) = show v
+  show (BooleanObject b) = if b then "true" else "false"
+  show NilObject = "nil"
 
 mod' :: Object -> Object -> Object
 mod' (NumberObject x) (NumberObject y) = NumberObject $ fromIntegral $ floor x `mod` floor y
@@ -64,6 +64,24 @@ setVariable name value context = case findVariableContext name (Just context) []
     let newContext = Context (parent context) (insert name value (variables context))
     foldl (\context h -> Context (Just context) (variables h)) newContext (reverse traversed)
   Nothing -> error $ "Variable " ++ name ++ " not declared"
+
+replace pos newVal list = take pos list ++ newVal : drop (pos + 1) list
+
+-- todo: testen ob index int ist
+setArrayValue :: ExpressionNode -> Object -> Context -> Object
+setArrayValue (ArrayAccessNode target index) value context = do
+  let t = case evalExpr context target of
+        ArrayObject v -> case evalExpr context index of
+          NumberObject i -> ArrayObject $ replace (floor i) value v
+          _ -> error ""
+        _ -> error ""
+  case target of
+    ArrayAccessNode _ _ -> setArrayValue target t context
+    _ -> t
+
+variableName :: ExpressionNode -> String
+variableName (ArrayAccessNode target _) = variableName target
+variableName (IdentNode n) = n
 
 evalExpr :: Context -> ExpressionNode -> Object
 evalExpr context (ArrayNode v) = ArrayObject (map (evalExpr context) v)
@@ -122,9 +140,9 @@ executeStatement context (IfNode condition consequence alternative) = do
   case evalExpr context' condition of
     BooleanObject b -> if b then executeStatement (pure context') consequence else executeStatement (pure context') alternative
     _ -> error "If condition must be of type boolean"
-executeStatement context (WhileNode condition body) = do 
-    context' <- context
-    executeWhile (pure context') condition body
+executeStatement context (WhileNode condition body) = do
+  context' <- context
+  executeWhile (pure context') condition body
 executeStatement context (VariableDeclarationNode name expr) = do
   context' <- context
   let value = evalExpr context' expr
@@ -137,6 +155,11 @@ executeStatement context (ExpressionStatementNode expr) = do
   context' <- context
   let v = evalExpr context' expr -- TODO: ignorieren
   context
+executeStatement context (ArrayAssignNode target value) = do
+    context' <- context
+    let newVal = setArrayValue target (evalExpr context' value) context'
+    let varName = variableName target
+    return $ setVariable varName newVal context'
 
 execute :: StatementNode -> IO Context
 execute = executeStatement (pure $ Context Nothing empty)

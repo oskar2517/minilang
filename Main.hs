@@ -1,7 +1,9 @@
 module Main where
-import Parser (parseAst)
-import Interpreter (execute, Context)
+import Parser (parseAst, expression)
+import Interpreter (execute)
 import Control.Monad (void)
+
+import Parsing
 
 main :: IO ()
 main = do

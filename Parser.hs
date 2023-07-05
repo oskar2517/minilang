@@ -1,4 +1,4 @@
-module Parser (parseAst, StatementNode (..), ExpressionNode (..), Operator (..)) where
+module Parser (parseAst, StatementNode (..), ExpressionNode (..), Operator (..), expression) where
 
 import Parsing
 
@@ -39,6 +39,7 @@ data StatementNode
   | VariableDeclarationNode String ExpressionNode
   | VariableAssignNode String ExpressionNode
   | PrintStatementNode ExpressionNode
+  | ArrayAssignNode ExpressionNode ExpressionNode
   deriving (Show)
 
 parseAst :: String -> Maybe StatementNode
@@ -72,12 +73,19 @@ printStatement = do
   return $ PrintStatementNode expr
 
 variableAssign :: Parser StatementNode
-variableAssign = do
-  name <- ident
-  token $ char '='
-  value <- expression
-  token $ char ';'
-  return $ VariableAssignNode name value
+variableAssign =
+  do
+    name <- ident
+    token $ char '='
+    value <- expression
+    token $ char ';'
+    return $ VariableAssignNode name value
+    <|> do
+      target <- access
+      token $ char '='
+      value <- expression
+      token $ char ';'
+      return $ ArrayAssignNode target value
 
 block :: Parser StatementNode
 block = do
