@@ -156,10 +156,10 @@ executeStatement context (ExpressionStatementNode expr) = do
   let v = evalExpr context' expr -- TODO: ignorieren
   context
 executeStatement context (ArrayAssignNode target value) = do
-    context' <- context
-    let newVal = setArrayValue target (evalExpr context' value) context'
-    let varName = variableName target
-    return $ setVariable varName newVal context'
+  context' <- context
+  let newVal = setArrayValue target (evalExpr context' value) context'
+  let varName = variableName target
+  return $ setVariable varName newVal context'
 
 execute :: StatementNode -> IO Context
 execute = executeStatement (pure $ Context Nothing empty)
