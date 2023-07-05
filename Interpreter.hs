@@ -62,7 +62,7 @@ setVariable :: String -> Object -> Context -> Context
 setVariable name value context = case findVariableContext name (Just context) [] of
   Just (context, traversed) -> do
     let newContext = Context (parent context) (insert name value (variables context))
-    foldl (\context h -> Context (Just context) (variables h)) newContext (reverse traversed)
+    foldl (\context h -> Context (Just context) (variables h)) newContext traversed
   Nothing -> error $ "Variable " ++ name ++ " not declared"
 
 replace pos newVal list = take pos list ++ newVal : drop (pos + 1) list
