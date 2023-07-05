@@ -1,0 +1,11 @@
+var a = 42;
+var b = 2017;
+
+var i = 0;
+while i < b {
+    if (a * i) % b == 1 {
+        print i;
+    }
+
+    i = i + 1;
+}
