@@ -139,31 +139,31 @@ comparison' :: ExpressionNode -> Parser ExpressionNode
 comparison' left =
     do
         token $ char '<'
-        right <- term
+        right <- numeric
         comparison' (BinaryExpressionNode Lt left right)
         <|> do
             token $ string "<="
-            right <- term
+            right <- numeric
             comparison' (BinaryExpressionNode Lte left right)
         <|> do
             token $ string ">"
-            right <- term
+            right <- numeric
             comparison' (BinaryExpressionNode Gt left right)
         <|> do
             token $ string ">="
-            right <- term
+            right <- numeric
             comparison' (BinaryExpressionNode Gte left right)
         <|> do
             token $ string "=="
-            right <- term
+            right <- numeric
             comparison' (BinaryExpressionNode Eq left right)
         <|> do
             token $ string "!="
-            right <- term
+            right <- numeric
             comparison' (BinaryExpressionNode NotEq left right)
         <|> do
             token $ char '>'
-            right <- term
+            right <- numeric
             comparison' (BinaryExpressionNode NotEq left right)
         <|> return left
 
