@@ -26,8 +26,6 @@ data ExpressionNode
   | NumberNode Float
   | ArrayNode [ExpressionNode]
   | ArrayAccessNode {target :: ExpressionNode, index :: ExpressionNode}
-  | CallNode {target :: ExpressionNode, arguments :: [ExpressionNode]}
-  | FunctionNode {parameters :: [String], body :: StatementNode}
   deriving (Show)
 
 data StatementNode
@@ -205,11 +203,6 @@ access' left =
     index <- expression
     token $ char ']'
     access' (ArrayAccessNode left index)
-    <|> do
-      token $ char '('
-      arguments <- expressionList
-      token $ char ')'
-      access' (CallNode left arguments)
     <|> return left
 
 access :: Parser ExpressionNode
@@ -220,7 +213,7 @@ access =
     <|> factor
 
 factor :: Parser ExpressionNode
-factor = number <|> string' <|> boolean <|> function <|> identifier' <|> parenExpression <|> array
+factor = number <|> string' <|> boolean <|> identifier' <|> parenExpression <|> array
 
 parenExpression :: Parser ExpressionNode
 parenExpression = do
@@ -268,20 +261,6 @@ expressionList =
       token $ char ','
       return expr
       <|> expression
-
-function :: Parser ExpressionNode
-function = do
-  token $ string "func"
-  token $ char '('
-  parameters <-
-    many $
-      do
-        param <- ident
-        token $ char ','
-        return param
-        <|> ident
-  token $ char ')'
-  FunctionNode parameters <$> block
 
 array :: Parser ExpressionNode
 array = do
