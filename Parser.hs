@@ -249,7 +249,7 @@ float = do
 string' :: Parser ExpressionNode
 string' = do
     char '"'
-    s <- some letter
+    s <- many letter
     char '"'
     return $ StringNode s
 
