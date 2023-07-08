@@ -34,7 +34,6 @@ data StatementNode
   = BlockNode [StatementNode]
   | WhileNode ExpressionNode StatementNode
   | IfNode ExpressionNode StatementNode StatementNode
-  | ExpressionStatementNode ExpressionNode
   | ReturnNode
   | VariableDeclarationNode String ExpressionNode
   | VariableAssignNode String ExpressionNode
@@ -52,7 +51,7 @@ parseAst code = do
 statement :: Parser StatementNode
 statement = do
   space
-  s <- printStatement <|> variableDeclaration <|> variableAssign <|> if' <|> while <|> expressionStatement
+  s <- printStatement <|> variableDeclaration <|> variableAssign <|> if' <|> while
   space
   return s
 
@@ -107,12 +106,6 @@ if' =
       condition <- expression
       consequence <- block
       return $ IfNode condition consequence $ BlockNode []
-
-expressionStatement :: Parser StatementNode
-expressionStatement = do
-  expr <- expression
-  token $ char ';'
-  return $ ExpressionStatementNode expr
 
 while :: Parser StatementNode
 while = do

@@ -151,10 +151,6 @@ executeStatement context (VariableAssignNode name expr) = do
   context' <- context
   let value = evalExpr context' expr
   return $ setVariable name value context'
-executeStatement context (ExpressionStatementNode expr) = do
-  context' <- context
-  let v = evalExpr context' expr -- TODO: ignorieren
-  context
 executeStatement context (ArrayAssignNode target value) = do
   context' <- context
   let newVal = setArrayValue target (evalExpr context' value) context'
