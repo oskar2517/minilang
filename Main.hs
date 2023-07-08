@@ -1,7 +1,8 @@
 module Main where
-import Parser (parseAst, expression)
-import Interpreter (execute)
+
 import Control.Monad (void)
+import Interpreter (execute)
+import Parser (expression, parseAst)
 
 import Parsing
 
@@ -11,5 +12,5 @@ main = do
     let ast = parseAst code
     case ast of
         Nothing -> error "Syntax error in file"
-        Just a -> do 
+        Just a -> do
             void $ execute a
