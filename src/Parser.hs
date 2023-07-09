@@ -10,8 +10,9 @@ import Parsing (
     parse,
     space,
     string,
-    token,
+    token, alphanum, sat,
  )
+import Data.Char (isAscii)
 
 -- | Represents various operators used in expressions.
 data Operator
@@ -406,7 +407,7 @@ float = do
 string' :: Parser ExpressionNode  -- ^ The parsed string literal expression
 string' = do
     char '"'
-    s <- many letter
+    s <- many (sat (/= '"'))
     char '"'
     return $ StringNode s
 
