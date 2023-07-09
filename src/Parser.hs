@@ -10,9 +10,9 @@ import Parsing (
     parse,
     space,
     string,
-    token, alphanum, sat,
+    sat,
+    symbol,
  )
-import Data.Char (isAscii)
 
 -- | Represents various operators used in expressions.
 data Operator
@@ -92,9 +92,9 @@ statement = do
 --   [(PrintStatementNode (IdentNode "x"),"")]
 printStatement :: Parser StatementNode  -- ^ The parsed print statement
 printStatement = do
-    token $ string "print"
+    symbol "print"
     expr <- expression
-    token $ char ';'
+    symbol ";"
     return $ PrintStatementNode expr
 
 -- | Parses a variable declaration statement.
@@ -105,11 +105,11 @@ printStatement = do
 --   [(VariableDeclarationNode "x" (NumberNode 5.0),"")]
 variableDeclaration :: Parser StatementNode  -- ^ The parsed variable declaration statement
 variableDeclaration = do
-    token $ string "var"
+    symbol "var"
     name <- ident
-    token $ string "="
+    symbol "="
     value <- expression
-    token $ char ';'
+    symbol ";"
     return $ VariableDeclarationNode name value
 
 -- | Parses a variable assignment statement.
@@ -121,9 +121,9 @@ variableDeclaration = do
 variableAssign :: Parser StatementNode  -- ^ The parsed variable assignment statement
 variableAssign = do
     name <- ident
-    token $ char '='
+    symbol "="
     value <- expression
-    token $ char ';'
+    symbol ";"
     return $ VariableAssignNode name value
 
 -- | Parses an array assignment statement.
@@ -135,9 +135,9 @@ variableAssign = do
 arrayAssign :: Parser StatementNode  -- ^ The parsed array assignment statement
 arrayAssign = do
     target <- access
-    token $ char '='
+    symbol "="
     value <- expression
-    token $ char ';'
+    symbol ";"
     return $ ArrayAssignNode target value
 
 -- | Parses an if statement with an optional else clause.
@@ -160,10 +160,10 @@ if' = ifWithElse <|> ifWithoutElse
 --   [(IfNode (BinaryExpressionNode Gt (IdentNode "x") (NumberNode 0.0)) (BlockNode [PrintStatementNode (StringNode "Positive")]) (BlockNode [PrintStatementNode (StringNode "Negative")]),"")]
 ifWithElse :: Parser StatementNode  -- ^ The parsed if statement
 ifWithElse = do
-    token $ string "if"
+    symbol "if"
     condition <- expression
     consequence <- block
-    token $ string "else"
+    symbol "else"
     IfNode condition consequence <$> block
 
 -- | Parses an if statement without an else clause. An empty block is set as the alternative.
@@ -175,7 +175,7 @@ ifWithElse = do
 --   [(IfNode (BinaryExpressionNode Gt (IdentNode "x") (NumberNode 0.0)) (BlockNode [PrintStatementNode (StringNode "Positive")]) (BlockNode []),"")]
 ifWithoutElse :: Parser StatementNode  -- ^ The parsed if statement
 ifWithoutElse = do
-    token $ string "if"
+    symbol "if"
     condition <- expression
     consequence <- block
     return $ IfNode condition consequence $ BlockNode []
@@ -189,7 +189,7 @@ ifWithoutElse = do
 --   [(WhileNode (BinaryExpressionNode Gt (IdentNode "x") (NumberNode 0.0)) (BlockNode [PrintStatementNode (IdentNode "x")]),"")]
 while :: Parser StatementNode  -- ^ The parsed while loop statement
 while = do
-    token $ string "while"
+    symbol "while"
     condition <- expression
     WhileNode condition <$> block
 
@@ -202,9 +202,9 @@ while = do
 --   [(BlockNode [VariableDeclarationNode "x" (NumberNode 5.0),PrintStatementNode (IdentNode "x")],"")]
 block :: Parser StatementNode  -- ^ The parsed block statement
 block = do
-    token $ char '{'
+    symbol "{"
     statements <- many statement
-    token $ char '}'
+    symbol "}"
     return $ BlockNode statements
 
 -- | Parses an expression.
@@ -234,31 +234,31 @@ comparison = do
 comparison' :: ExpressionNode -> Parser ExpressionNode  -- ^ The parsed comparison expression with the left operand
 comparison' left =
     do
-        token $ char '<'
+        symbol "<"
         right <- numeric
         comparison' (BinaryExpressionNode Lt left right)
         <|> do
-            token $ string "<="
+            symbol "<="
             right <- numeric
             comparison' (BinaryExpressionNode Lte left right)
         <|> do
-            token $ string ">"
+            symbol ">"
             right <- numeric
             comparison' (BinaryExpressionNode Gt left right)
         <|> do
-            token $ string ">="
+            symbol ">="
             right <- numeric
             comparison' (BinaryExpressionNode Gte left right)
         <|> do
-            token $ string "=="
+            symbol "=="
             right <- numeric
             comparison' (BinaryExpressionNode Eq left right)
         <|> do
-            token $ string "!="
+            symbol "!="
             right <- numeric
             comparison' (BinaryExpressionNode NotEq left right)
         <|> do
-            token $ char '>'
+            symbol ">"
             right <- numeric
             comparison' (BinaryExpressionNode NotEq left right)
         <|> return left
@@ -279,11 +279,11 @@ numeric = do
 numeric' :: ExpressionNode -> Parser ExpressionNode  -- ^ The parsed numeric expression with the left operand
 numeric' left =
     do
-        token $ char '+'
+        symbol "+"
         right <- term
         numeric' (BinaryExpressionNode Add left right)
         <|> do
-            token $ char '-'
+            symbol "-"
             right <- term
             numeric' (BinaryExpressionNode Subtract left right)
         <|> return left
@@ -304,15 +304,15 @@ term = do
 term' :: ExpressionNode -> Parser ExpressionNode  -- ^ The parsed term expression with the left operand
 term' left =
     do
-        token $ char '*'
+        symbol "*"
         right <- signedFactor
         term' (BinaryExpressionNode Multiply left right)
         <|> do
-            token $ char '/'
+            symbol "/"
             right <- signedFactor
             term' (BinaryExpressionNode Divide left right)
         <|> do
-            token $ char '%'
+            symbol "%"
             right <- signedFactor
             term' (BinaryExpressionNode Modulo left right)
         <|> return left
@@ -326,7 +326,7 @@ term' left =
 signedFactor :: Parser ExpressionNode  -- ^ The parsed signed factor expression
 signedFactor =
     do
-        token $ char '-'
+        symbol "-"
         UnaryExpressionNode Subtract <$> access
         <|> access
 
@@ -346,9 +346,9 @@ access =
 access' :: ExpressionNode -> Parser ExpressionNode  -- ^ The parsed array access expression with the left operand
 access' left =
     do
-        token $ char '['
+        symbol "["
         index <- expression
-        token $ char ']'
+        symbol "]"
         access' (ArrayAccessNode left index)
         <|> return left
 
@@ -394,7 +394,7 @@ integer' = do
 float :: Parser ExpressionNode  -- ^ The parsed floating-point literal expression
 float = do
     i <- some digit
-    token $ char '.'
+    symbol "."
     f <- some digit
     return $ NumberNode $ read $ i ++ "." ++ f
 
@@ -456,9 +456,9 @@ identifier' = IdentNode <$> ident
 --   [(BinaryExpressionNode Add (IdentNode "x") (NumberNode 2.0),"")]
 parenExpression :: Parser ExpressionNode  -- ^ The parsed parenthesized expression
 parenExpression = do
-    token $ char '('
+    symbol "("
     expr <- expression
-    token $ char ')'
+    symbol ")"
     return expr
 
 -- | Parses an array literal expression.
@@ -471,9 +471,9 @@ parenExpression = do
 --   [(ArrayNode [NumberNode 1.0,NumberNode 2.0,NumberNode 3.0],"")]
 array :: Parser ExpressionNode  -- ^ The parsed array literal expression
 array = do
-    token $ char '['
+    symbol "["
     values <- expressionList
-    token $ char ']'
+    symbol "]"
     return $ ArrayNode values
 
 -- | Parses a comma-separated list of expressions.
@@ -487,6 +487,6 @@ expressionList =
     many $
         do
             expr <- expression
-            token $ char ','
+            symbol ","
             return expr
             <|> expression
